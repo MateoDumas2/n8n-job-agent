@@ -1,10 +1,15 @@
 FROM n8nio/n8n:latest
 
 USER root
-RUN npm install -g pm2
+
+# No instalamos pm2 para simplificar y asegurar que n8n sea el proceso principal
+# n8n ya está en el PATH de la imagen oficial
+
 USER node
 
+# Render usa la variable PORT (por defecto 10000)
+# n8n escucha en el puerto 5678 por defecto, pero lo mapearemos
 EXPOSE 5678
 
-# Usar la ruta absoluta para evitar el error "Command not found"
-CMD ["/usr/local/bin/n8n", "start"]
+# Usamos el comando simple. En la imagen oficial 'n8n' está en el PATH.
+CMD ["n8n", "start"]

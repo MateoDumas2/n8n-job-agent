@@ -5,16 +5,18 @@ services:
     plan: free
     region: ohio
     envVars:
-      - key: N8N_HOST
-        sync: false
-      - key: N8N_PORT
-        value: 5678
-      - key: N8N_PROTOCOL
-        value: https
-      - key: NODE_ENV
-        value: production
-      - key: WEBHOOK_URL
-        sync: false
+        - key: N8N_HOST
+          sync: false
+        - key: N8N_PORT
+          value: 10000
+        - key: PORT
+          value: 10000
+        - key: N8N_PROTOCOL
+          value: https
+        - key: NODE_ENV
+          value: production
+        - key: WEBHOOK_URL
+          sync: false
       - key: DB_TYPE
         value: postgresdb
       - key: DB_POSTGRESDB_DATABASE
