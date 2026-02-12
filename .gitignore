@@ -1,0 +1,5 @@
+node_modules/
+*.log
+.env
+ofertas_analizadas.csv
+*.pdf

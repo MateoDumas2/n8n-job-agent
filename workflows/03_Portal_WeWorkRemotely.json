@@ -1,0 +1,63 @@
+{
+  "name": "03_Portal_WeWorkRemotely_RSS",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://weworkremotely.com/categories/remote-programming-jobs.rss"
+      },
+      "name": "RSS Feed Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar Datos de RSS\nconst items = $input.all();\n\nreturn items.map(item => {\n  const rss = item.json;\n  return {\n    json: {\n      title: rss.title,\n      company: 'Unknown (Check Link)', // RSS de WWR a veces no trae company directo limpio\n      url: rss.link,\n      source_portal: 'WeWorkRemotely',\n      location: 'Remote',\n      discovered_at: new Date().toISOString(),\n      description: rss.contentSnippet || rss.content\n    }\n  };\n});"
+      },
+      "name": "Normalizar Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Read": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

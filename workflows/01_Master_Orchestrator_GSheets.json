@@ -1,0 +1,152 @@
+{
+  "name": "01_Master_Orchestrator_GSheets",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron Diario",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [\n  {\n    \"json\": {\n      \"portals\": [\"WeWorkRemotely\", \"Computrabajo\"],\n      \"keywords\": [\"Frontend\", \"React\", \"Node.js\"],\n      \"location\": \"Argentina\"\n    }\n  }\n];"
+      },
+      "name": "Configuracion",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "portals"
+      },
+      "name": "Iterar Portales",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "YOUR_SUB_WORKFLOW_ID_HERE"
+      },
+      "name": "Ejecutar Scraper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "notes": "Conecta aquí los sub-workflows (WeWorkRemotely, Computrabajo)"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Deduplicación Simple para Google Sheets\n// Generamos un ID único pero dejamos que GSheets maneje el append\n// Idealmente, leeríamos la hoja antes para filtrar, pero para MVP hacemos append directo.\n\nconst items = $items('Ejecutar Scraper');\nconst crypto = require('crypto');\n\nreturn items.map(item => {\n  const offer = item.json;\n  const rawString = `${offer.title}-${offer.company}`.toLowerCase();\n  offer.hash_id = crypto.createHash('md5').update(rawString).digest('hex');\n  offer.status = 'New';\n  return { json: offer };\n});"
+      },
+      "name": "Prepara Datos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "sheetId": "1nnijXVGmUY5e2DVKQNzmyHwB0rPPJQXIQ4TplQ5Tuig",
+        "range": "A:H",
+        "options": {}
+      },
+      "name": "Guardar en Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron Diario": {
+      "main": [
+        [
+          {
+            "node": "Configuracion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuracion": {
+      "main": [
+        [
+          {
+            "node": "Iterar Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iterar Portales": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Scraper": {
+      "main": [
+        [
+          {
+            "node": "Prepara Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepara Datos": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

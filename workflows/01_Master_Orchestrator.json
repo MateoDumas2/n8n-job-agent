@@ -1,0 +1,150 @@
+{
+  "name": "01_Master_Job_Search_Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron Diario",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [\n  {\n    \"json\": {\n      \"portals\": [\"Computrabajo\", \"LinkedIn\", \"ZonaJobs\"],\n      \"keywords\": [\"Frontend\", \"React\", \"Node.js\"],\n      \"location\": \"Argentina\"\n    }\n  }\n];"
+      },
+      "name": "Configuracion",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "portals"
+      },
+      "name": "Iterar Portales",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "YOUR_SUB_WORKFLOW_ID_HERE"
+      },
+      "name": "Ejecutar Scraper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "notes": "Aquí se conecta al sub-workflow específico según el nombre del portal"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Lógica de Deduplicación\n// Este nodo recibiría los resultados de los scrapers y calcularía el hash\n\nconst items = $items('Ejecutar Scraper');\nconst crypto = require('crypto');\n\nreturn items.map(item => {\n  const offer = item.json;\n  const rawString = `${offer.title}-${offer.company}`.toLowerCase();\n  offer.hash_id = crypto.createHash('md5').update(rawString).digest('hex');\n  return { json: offer };\n});"
+      },
+      "name": "Calcular Hash y Dedup",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "table": "job_offers",
+        "columns": "hash_id, title, company, location, url, source_portal, normalized_role, normalized_seniority",
+        "mode": "insert"
+      },
+      "name": "Guardar en Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Postgres Local"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron Diario": {
+      "main": [
+        [
+          {
+            "node": "Configuracion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuracion": {
+      "main": [
+        [
+          {
+            "node": "Iterar Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iterar Portales": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Scraper": {
+      "main": [
+        [
+          {
+            "node": "Calcular Hash y Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular Hash y Dedup": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "name": "02_Portal_Computrabajo_Scraper",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://ar.computrabajo.com/trabajo-de-{{$json[\"keyword\"]}}-en-{{$json[\"location\"]}}",
+        "options": {
+          "followRedirects": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+          ]
+        }
+      },
+      "name": "HTTP Request (Search)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "dataPropertyName": "body",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "titles",
+              "cssSelector": "h1.title_offer, h2.title_offer, .box_offer h2",
+              "returnValue": "html",
+              "returnArray": true
+            },
+            {
+              "key": "companies",
+              "cssSelector": ".box_offer p.fs16, .box_offer .companyName",
+              "returnValue": "text",
+              "returnArray": true
+            },
+            {
+              "key": "urls",
+              "cssSelector": "a.js-o-link",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        }
+      },
+      "name": "HTML Extract",
+      "type": "n8n-nodes-base.htmlExtract",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalización de Datos\n// Combina los arrays extraídos en objetos individuales\n\nconst titles = $items('HTML Extract')[0].json.titles || [];\nconst companies = $items('HTML Extract')[0].json.companies || [];\nconst urls = $items('HTML Extract')[0].json.urls || [];\n\nconst results = [];\n\nfor (let i = 0; i < titles.length; i++) {\n  results.push({\n    json: {\n      title: titles[i].replace(/<[^>]*>?/gm, '').trim(), // Strip HTML tags\n      company: (companies[i] || 'Confidencial').trim(),\n      url: 'https://ar.computrabajo.com' + (urls[i] || ''),\n      source_portal: 'Computrabajo',\n      location: 'Argentina', // Heredado del input\n      discovered_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "Normalizar Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (Search)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (Search)": {
+      "main": [
+        [
+          {
+            "node": "HTML Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Extract": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

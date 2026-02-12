@@ -1,0 +1,617 @@
+{
+  "name": "Buscador de Trabajo V4 (Gemini + Telegram) - COMPATIBLE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron Diario",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [100, 500]
+    },
+    {
+      "parameters": {
+        "command": "del \"C:\\Users\\mateo\\Documents\\Agente de Busqueda Laboral\\ofertas_analizadas.csv\" 2>nul"
+      },
+      "name": "Limpiar CSV Previo",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://weworkremotely.com/categories/remote-programming-jobs.rss"
+      },
+      "name": "RSS WeWorkRemotely",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [500, 150]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar WWR\nconst items = $input.all();\nreturn items.map(item => {\n  const rss = item.json;\n  return {\n    json: {\n      title: rss.title,\n      company: 'Unknown (WeWorkRemotely)',\n      url: rss.link,\n      description: rss.contentSnippet || rss.content,\n      source: 'WeWorkRemotely',\n      date: rss.isoDate\n    }\n  };\n});"
+      },
+      "name": "Normalizar WWR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [700, 150]
+    },
+    {
+      "parameters": {
+        "url": "https://remoteok.com/remote-jobs.rss"
+      },
+      "name": "RSS RemoteOK",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar RemoteOK\nconst items = $input.all();\nreturn items.map(item => {\n  const rss = item.json;\n  return {\n    json: {\n      title: rss.title,\n      company: 'Unknown (RemoteOK)',\n      url: rss.link,\n      description: rss.contentSnippet || rss.content,\n      source: 'RemoteOK',\n      date: rss.isoDate\n    }\n  };\n});"
+      },
+      "name": "Normalizar RemoteOK",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://ar.computrabajo.com/trabajo-de-desarrollador-web",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "string"
+        }
+      },
+      "name": "Scraper Computrabajo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 450]
+    },
+    {
+      "parameters": {
+        "dataPropertyName": "data",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "titles",
+              "cssSelector": "h1.title_offer, h2.title_offer, .box_offer h2",
+              "returnValue": "text",
+              "returnArray": true
+            },
+            {
+              "key": "companies",
+              "cssSelector": ".box_offer p.fs16, .box_offer .companyName",
+              "returnValue": "text",
+              "returnArray": true
+            },
+            {
+              "key": "urls",
+              "cssSelector": "a.js-o-link",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        }
+      },
+      "name": "HTML Extract",
+      "type": "n8n-nodes-base.htmlExtract",
+      "typeVersion": 1,
+      "position": [700, 450]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar Computrabajo\nconst item = $input.first();\nconst json = item.json;\nconst titles = json.titles || [];\nconst companies = json.companies || [];\nconst urls = json.urls || [];\n\nconst results = [];\n\nfor (let i = 0; i < titles.length; i++) {\n  results.push({\n    json: {\n      title: (titles[i] || '').trim(),\n      company: (companies[i] || 'Confidencial').trim(),\n      url: 'https://ar.computrabajo.com' + (urls[i] || ''),\n      description: 'Ver detalle en link',\n      source: 'Computrabajo',\n      date: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "Normalizar Computrabajo",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 450]
+    },
+    {
+      "parameters": {
+        "url": "https://www.getonbrd.com/jobs-rss/desarrollo-de-software"
+      },
+      "name": "RSS GetOnBoard",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [500, 600]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar GetOnBoard\nconst items = $input.all();\nreturn items.map(item => {\n  const rss = item.json;\n  return {\n    json: {\n      title: rss.title,\n      company: 'Unknown (GetOnBoard)',\n      url: rss.link,\n      description: rss.contentSnippet || rss.content,\n      source: 'GetOnBoard',\n      date: rss.isoDate\n    }\n  };\n});"
+      },
+      "name": "Normalizar GetOnBoard",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [700, 600]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.bumeran.com.ar/empleos-busqueda-desarrollador-web.html",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "responseFormat": "string"
+        }
+      },
+      "name": "Scraper Bumeran",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 750]
+    },
+    {
+      "parameters": {
+        "dataPropertyName": "data",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "titles",
+              "cssSelector": "h2",
+              "returnValue": "text",
+              "returnArray": true
+            },
+            {
+              "key": "urls",
+              "cssSelector": "a[id^='aviso-']",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        }
+      },
+      "name": "Extract Bumeran",
+      "type": "n8n-nodes-base.htmlExtract",
+      "typeVersion": 1,
+      "position": [700, 750]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar Bumeran\nconst item = $input.first();\nconst json = item.json;\nconst titles = json.titles || [];\nconst urls = json.urls || [];\n\nconst results = [];\nfor (let i = 0; i < titles.length; i++) {\n  results.push({\n    json: {\n      title: (titles[i] || '').trim(),\n      company: 'Ver en Bumeran',\n      url: 'https://www.bumeran.com.ar' + (urls[i] || ''),\n      description: 'Ver detalle en link',\n      source: 'Bumeran',\n      date: new Date().toISOString()\n    }\n  });\n}\nreturn results;"
+      },
+      "name": "Normalizar Bumeran",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 750]
+    },
+    {
+      "parameters": {},
+      "name": "Merge Portales",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Filtro Inteligente: Mateo Dumas (Full Stack Developer)\nconst keywords = [\n  'react', 'node', 'next', 'nest', 'typescript', 'javascript', \n  'full stack', 'frontend', 'backend', 'web', 'programador', \n  'developer', 'software', 'docker', 'postgresql', 'mongodb', \n  'aws', 'socket.io', 'webrtc', 'mediasoup', 'prisma', 'sql'\n];\n\nconst items = $input.all();\n\nreturn items.filter(item => {\n  const text = ((item.json.title || '') + ' ' + (item.json.description || '')).toLowerCase();\n  const hasKeyword = keywords.some(k => text.includes(k));\n  return hasKeyword;\n}).slice(0, 10); // Aumentamos un poco el límite"
+      },
+      "name": "Filtro Relevancia",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_GROQ_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un Career Coach experto para Mateo Dumas, un Desarrollador Full Stack (MERN, Next.js, TypeScript, Docker). Tu objetivo es analizar ofertas de trabajo y asignar un 'score' de 0 a 100 basado en la compatibilidad con su perfil:\\n- Stack: React, Next.js, Node.js, NestJS, TypeScript, PostgreSQL, Docker, AWS.\\n- Intereses: Microservicios, tiempo real (WebSockets), escalabilidad.\\n- Ubicación: Buenos Aires, Argentina (acepta Remoto).\\n\\nResponde ÚNICAMENTE en JSON válido con este formato: { \\\"score\\\": 85, \\\"analysis\\\": \\\"Breve resumen de por qué encaja o qué falta\\\" }.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Oferta: \" + $json.title + \" - \" + ($json.description ? $json.description.substring(0, 1000) : \"Sin descripción\")\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}) }}",
+        "options": {}
+      },
+      "name": "AI Analisis (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parsear Respuesta de Groq y unificar datos\nconst response = $input.item.json;\n\n// Obtenemos la oferta original del Loop\nlet original = {};\ntry {\n  original = $(\"Loop Batches\").item.json;\n} catch (e) {\n  try {\n    original = $(\"Filtro Relevancia\").item.json;\n  } catch (e2) {\n    original = { title: \"Oferta detectada\", url: \"#\" };\n  }\n}\n\nlet analysisData = { score: 0, analysis: \"Error en análisis\" };\n\ntry {\n  const content = response.choices[0].message.content;\n  const cleanContent = content.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysisData = JSON.parse(cleanContent);\n} catch (e) {\n  analysisData.analysis = \"IA respondió texto: \" + response.choices[0].message.content.substring(0, 100);\n}\n\nreturn {\n  json: {\n    title: original.title || \"Título no capturado\",\n    url: original.url || \"#\",\n    score: analysisData.score || 0,\n    analysis: analysisData.analysis || \"Sin resumen disponible\"\n  }\n};"
+      },
+      "name": "Parsear Gemini",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "csv",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "name": "Convertir a CSV",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [2100, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "C:/Users/mateo/Documents/Agente de Busqueda Laboral/ofertas_analizadas.csv",
+        "options": {
+          "append": true
+        }
+      },
+      "name": "Guardar Archivo Local",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [2300, 300]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2100, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8255293260:AAEJNHZn7lC89rSs18A7AP-4VjuAB4QCJSM/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\n  \"chat_id\": \"6691585612\",\n  \"text\": \"🚀 <b>Nueva Oferta (Score: \" + ($json.score || 0) + \")</b>\\n\\n<b>Título:</b> \" + ($json.title || 'Ver link') + \"\\n<b>Link:</b> \" + ($json.url || 'No disponible') + \"\\n\\n<b>Análisis:</b> \" + ($json.analysis || 'Sin resumen'),\n  \"parse_mode\": \"HTML\"\n}) }}",
+        "options": {}
+      },
+      "name": "Enviar Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2500, 300]
+    }
+  ],
+  "connections": {
+    "Cron Diario": {
+      "main": [
+        [
+          {
+            "node": "Limpiar CSV Previo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Limpiar CSV Previo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar CSV Previo": {
+      "main": [
+        [
+          {
+            "node": "RSS WeWorkRemotely",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS RemoteOK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scraper Computrabajo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS GetOnBoard",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scraper Bumeran",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS WeWorkRemotely": {
+      "main": [
+        [
+          {
+            "node": "Normalizar WWR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar WWR": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS RemoteOK": {
+      "main": [
+        [
+          {
+            "node": "Normalizar RemoteOK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar RemoteOK": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scraper Computrabajo": {
+      "main": [
+        [
+          {
+            "node": "HTML Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Extract": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Computrabajo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Computrabajo": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS GetOnBoard": {
+      "main": [
+        [
+          {
+            "node": "Normalizar GetOnBoard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar GetOnBoard": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scraper Bumeran": {
+      "main": [
+        [
+          {
+            "node": "Extract Bumeran",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Bumeran": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Bumeran",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Bumeran": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Portales": {
+      "main": [
+        [
+          {
+            "node": "Filtro Relevancia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtro Relevancia": {
+      "main": [
+        [
+          {
+            "node": "Loop Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Batches": {
+      "main": [
+        [
+          {
+            "node": "AI Analisis (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analisis (Groq)": {
+      "main": [
+        [
+          {
+            "node": "Parsear Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Gemini": {
+      "main": [
+        [
+          {
+            "node": "Enviar Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convertir a CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Telegram": {
+      "main": [
+        []
+      ]
+    },
+    "Convertir a CSV": {
+      "main": [
+        [
+          {
+            "node": "Guardar Archivo Local",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Archivo Local": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
